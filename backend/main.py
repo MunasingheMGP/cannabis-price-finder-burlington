@@ -22,8 +22,8 @@ from scheduler import (
     run_pipeline, pipeline_state, get_last_run_from_db,
 )
 
-# ── Pipeline schedule: hours between automatic runs (default 24) ──────────────
-PIPELINE_INTERVAL_HOURS = int(os.getenv("PIPELINE_INTERVAL_HOURS", "24"))
+# ── Pipeline schedule: hours between automatic runs (default 168) ──────────────
+PIPELINE_INTERVAL_HOURS = int(os.getenv("PIPELINE_INTERVAL_HOURS", "168"))
 
 
 # ── Lifespan: start scheduler on boot, stop on shutdown ──────────────────────
