@@ -1,4 +1,4 @@
-# 🌿 MontKailash Cannabis Platform
+# 🌿 Cannabis Platform
 
 A full-stack web platform for comparing cannabis product prices and discovering licensed stores within **Burlington, Ontario and a 35 km radius**.
 
