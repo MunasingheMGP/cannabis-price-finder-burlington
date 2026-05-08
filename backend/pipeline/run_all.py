@@ -14,9 +14,6 @@ STEPS = [
     ("fetch_stores_agco.py",          "Fetching licensed stores from AGCO registry"),
     ("enrich_store_contacts.py",       "Enriching stores with phone numbers and hours"),
     ("scrape_competitor_products.py",  "Scraping competitor products and pricing"),
-    ("compare_market_prices.py",       "Comparing prices against HiBuddy and OCS"),
-    ("reddit_sentiment_analytics.py",  "Fetching Reddit sentiment and building analytics"),
-   
 ]
 
 # Tables created by each step (for post-run summary)
@@ -24,9 +21,6 @@ STEP_TABLES = {
     "fetch_stores_agco.py":          ["stores_master"],
     "enrich_store_contacts.py":      ["stores_master"],
     "scrape_competitor_products.py": ["products_pricing_snapshot", "bbfyb_stores"],
-    "compare_market_prices.py":      ["hibuddy_raw", "ocs_raw", "market_comparison"],
-    "reddit_sentiment_analytics.py": ["reddit_sentiment_raw", "business_analytics_summary"],
-    
 }
 
 
@@ -66,10 +60,9 @@ def print_db_summary():
     """Print row counts for all pipeline tables after completion."""
     engine = get_engine()
     all_tables = [
-        "stores_master", "products_pricing_snapshot", "bbfyb_stores",
-        "hibuddy_raw", "ocs_raw", "market_comparison",
-        "reddit_sentiment_raw", "business_analytics_summary",
-        "executive_actionable_insights",
+        "stores_master",
+        "products_pricing_snapshot",
+        "bbfyb_stores",
     ]
     print("\n  PostgreSQL table summary (cannabis_db):")
     print(f"  {'Table':<40} {'Rows':>8}")

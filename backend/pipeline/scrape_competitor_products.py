@@ -162,6 +162,35 @@ def main():
     if products_df.empty:
         print("\nNo products scraped — check if BBFYB site structure changed.")
     else:
+        raw_count = len(products_df)
+
+        # ── Drop rows where BOTH regular_price and sale_price are missing ─────
+        no_price_mask = (
+            products_df["regular_price"].str.strip().eq("") &
+            products_df["sale_price"].str.strip().eq("")
+        )
+        products_df = products_df[~no_price_mask]
+        no_price_dropped = raw_count - len(products_df)
+        if no_price_dropped:
+            print(f"\n  Dropped {no_price_dropped} product(s) with no price info.")
+
+        # ── Deduplicate: same store_name + product_name + effective price ──────
+        # Use sale_price when available, else regular_price as the comparison key
+        products_df["_price_key"] = products_df["sale_price"].where(
+            products_df["sale_price"].str.strip().ne(""),
+            products_df["regular_price"],
+        )
+        before_dedup = len(products_df)
+        products_df = products_df.drop_duplicates(
+            subset=["store_name", "product_name", "_price_key"]
+        )
+        products_df = products_df.drop(columns=["_price_key"])
+        dedup_dropped = before_dedup - len(products_df)
+        if dedup_dropped:
+            print(f"  Dropped {dedup_dropped} duplicate product(s) "
+                  f"(same store + product name + price).")
+
+        print(f"\n  Final product count to write: {len(products_df)}")
         write_df(products_df, "products_pricing_snapshot", engine, if_exists="replace")
 
     stores_df = pd.DataFrame(all_stores).drop_duplicates(subset=["store_url"])

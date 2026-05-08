@@ -23,12 +23,9 @@ sys.path.insert(0, str(PIPELINE_DIR))
 
 # ── Pipeline steps in execution order ─────────────────────────────────────────
 PIPELINE_STEPS = [
-    ("fetch_stores",       "fetch_stores_agco",          "main"),
-    ("enrich_contacts",    "enrich_store_contacts",       "main"),
-    ("scrape_products",    "scrape_competitor_products",  "main"),
-    ("compare_prices",     "compare_market_prices",       "main"),
-    ("reddit_sentiment",   "reddit_sentiment_analytics",  "main"),
-    
+    ("fetch_stores",    "fetch_stores_agco",         "main"),
+    ("enrich_contacts", "enrich_store_contacts",      "main"),
+    ("scrape_products", "scrape_competitor_products", "main"),
 ]
 
 # ── Shared mutable state (read by API endpoints) ──────────────────────────────

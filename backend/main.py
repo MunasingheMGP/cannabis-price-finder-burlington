@@ -59,6 +59,12 @@ def slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", str(name).lower()).strip("-")
 
 
+def store_slug(store: dict) -> str:
+    """Unique store ID combining store_name + postal_code to avoid collisions
+    when multiple stores share the same name (e.g. two 'TreeTop' locations)."""
+    return slug(str(store.get("store_name", "")) + "-" + str(store.get("postal_code", "")))
+
+
 def rows_to_list(cursor) -> list[dict]:
     cols = [d[0] for d in cursor.description]
     return [dict(zip(cols, row)) for row in cursor.fetchall()]
@@ -102,7 +108,7 @@ def list_stores(
         stores = rows_to_list(cur)
 
     for s in stores:
-        s["id"] = slug(s["store_name"])
+        s["id"] = store_slug(s)
     return {"total": len(stores), "stores": stores}
 
 
@@ -123,7 +129,7 @@ def store_detail(store_id: str):
             FROM stores_master
         """)
         all_stores = rows_to_list(cur)
-        store = next((s for s in all_stores if slug(s["store_name"]) == store_id), None)
+        store = next((s for s in all_stores if store_slug(s) == store_id), None)
         if not store:
             raise HTTPException(status_code=404, detail="Store not found")
 
@@ -183,11 +189,13 @@ def list_products(
         params += [limit, offset]
 
         cur.execute(f"""
-            SELECT store_name, store_city, product_name, brand,
-                   size_format, regular_price, sale_price, promotion_duration
-            FROM products_pricing_snapshot
+            SELECT p.store_name, p.store_city, p.product_name, p.brand,
+                   p.size_format, p.regular_price, p.sale_price, p.promotion_duration,
+                   COALESCE(sm.postal_code, '') AS postal_code
+            FROM products_pricing_snapshot p
+            LEFT JOIN stores_master sm ON LOWER(sm.store_name) = LOWER(p.store_name)
             {where_sql}
-            ORDER BY product_name, store_name
+            ORDER BY p.product_name, p.store_name
             LIMIT %s OFFSET %s
         """, params)
 
@@ -195,7 +203,7 @@ def list_products(
 
     for p in products:
         p["id"]       = slug(p["product_name"])
-        p["store_id"] = slug(p["store_name"])
+        p["store_id"] = slug(str(p.get("store_name", "")) + "-" + str(p.get("postal_code", "")))
         p["on_sale"]  = bool(p.get("sale_price"))
 
     return {"total": len(products), "products": products}
@@ -209,10 +217,12 @@ def product_detail(product_id: str):
     with get_connection() as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT store_name, store_city, product_name, brand,
-                   size_format, regular_price, sale_price, promotion_duration
-            FROM products_pricing_snapshot
-            ORDER BY product_name
+            SELECT p.store_name, p.store_city, p.product_name, p.brand,
+                   p.size_format, p.regular_price, p.sale_price, p.promotion_duration,
+                   COALESCE(sm.postal_code, '') AS postal_code
+            FROM products_pricing_snapshot p
+            LEFT JOIN stores_master sm ON LOWER(sm.store_name) = LOWER(p.store_name)
+            ORDER BY p.product_name
         """)
         all_rows = rows_to_list(cur)
 
@@ -223,7 +233,7 @@ def product_detail(product_id: str):
     first = matches[0]
     stores_carrying = [
         {
-            "store_id":         slug(r["store_name"]),
+            "store_id":         slug(str(r["store_name"]) + "-" + str(r.get("postal_code", ""))),
             "store_name":       r["store_name"],
             "store_city":       r["store_city"],
             "regular_price":    r["regular_price"],
@@ -261,22 +271,24 @@ def list_deals(
     with get_connection() as conn:
         cur = conn.cursor()
         base = """
-            SELECT store_name, store_city, product_name, brand,
-                   size_format, regular_price, sale_price, promotion_duration
-            FROM products_pricing_snapshot
-            WHERE sale_price IS NOT NULL AND sale_price != ''
+            SELECT p.store_name, p.store_city, p.product_name, p.brand,
+                   p.size_format, p.regular_price, p.sale_price, p.promotion_duration,
+                   COALESCE(sm.postal_code, '') AS postal_code
+            FROM products_pricing_snapshot p
+            LEFT JOIN stores_master sm ON LOWER(sm.store_name) = LOWER(p.store_name)
+            WHERE p.sale_price IS NOT NULL AND p.sale_price != ''
         """
         if city:
-            cur.execute(base + " AND LOWER(store_city) = LOWER(%s) ORDER BY product_name LIMIT %s OFFSET %s",
+            cur.execute(base + " AND LOWER(p.store_city) = LOWER(%s) ORDER BY p.product_name LIMIT %s OFFSET %s",
                         (city, limit, offset))
         else:
-            cur.execute(base + " ORDER BY product_name LIMIT %s OFFSET %s", (limit, offset))
+            cur.execute(base + " ORDER BY p.product_name LIMIT %s OFFSET %s", (limit, offset))
 
         deals = rows_to_list(cur)
 
     for d in deals:
         d["id"]       = slug(d["product_name"])
-        d["store_id"] = slug(d["store_name"])
+        d["store_id"] = slug(str(d.get("store_name", "")) + "-" + str(d.get("postal_code", "")))
 
     return {"total": len(deals), "deals": deals}
 
@@ -324,7 +336,7 @@ def search(
     for p in products:
         p["id"] = slug(p["product_name"])
     for s in stores:
-        s["id"] = slug(s["store_name"])
+        s["id"] = store_slug(s)
 
     return {
         "query":    q,
