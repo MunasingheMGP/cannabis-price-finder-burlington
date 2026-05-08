@@ -9,7 +9,7 @@ from contextlib import contextmanager
 DB_CONFIG = {
     "host":     "localhost",
     "port":     5432,
-    "dbname":   "cannabis",
+    "dbname":   "cannabis_db",
     "user":     "postgres",
     "password": "pgadmin",
 }
