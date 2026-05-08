@@ -1,19 +1,27 @@
 # Cannabis Price Comparison & Store Discovery Platform
 
-> Burlington, Ontario · 35 km radius · Licensed AGCO Retailers
+A web platform to compare cannabis product prices and discover licensed stores within **Burlington, Ontario and a 35 km radius**.
 
-A full-stack web platform to compare cannabis product prices, discover licensed stores, and track deals — powered by an automated data pipeline that collects, enriches, and scores data daily.
+---
+
+## Project Overview
+
+This platform allows users to:
+- Browse and compare cannabis products by price across multiple licensed stores
+- Discover nearby stores with contact details and hours of operation
+- View active deals and promotions
+- Search across products, brands, and stores by keyword
 
 ---
 
 ## Tech Stack
 
-| Layer     | Technology                                   |
-|-----------|----------------------------------------------|
-| Frontend  | Next.js 14 / React 18                        |
-| Backend   | Python FastAPI + Swagger / OpenAPI           |
-| Database  | PostgreSQL (`cannabis_db`)                   |
-| Scheduler | APScheduler (auto-runs pipeline every 24 h)  |
+| Layer     | Technology                        |
+|-----------|-----------------------------------|
+| Frontend  | Next.js / React                   |
+| Backend   | Python — FastAPI                  |
+| Database  | PostgreSQL (`cannabis_db`)        |
+| API Docs  | Swagger / OpenAPI (auto-generated)|
 
 ---
 
@@ -21,196 +29,192 @@ A full-stack web platform to compare cannabis product prices, discover licensed 
 
 ```
 cannabis-platform/
-├── backend/
-│   ├── main.py                        # FastAPI app — all API endpoints
-│   ├── database.py                    # PostgreSQL connection pool (psycopg2)
-│   ├── scheduler.py                   # APScheduler — auto-runs pipeline on interval
-│   ├── requirements.txt
-│   └── pipeline/                      # Data collection & enrichment scripts
-│       ├── db_config.py               # SQLAlchemy engine config
-│       ├── fetch_stores_agco.py       # Step 1 — fetch licensed stores from AGCO
-│       ├── enrich_store_contacts.py   # Step 2 — add phone numbers & hours
-│       ├── scrape_competitor_products.py  # Step 3 — scrape product prices
-│       ├── compare_market_prices.py   # Step 4 — compare vs HiBuddy & OCS
-│       ├── reddit_sentiment_analytics.py  # Step 5 — Reddit sentiment & analytics
-│       └── run_all.py                 # CLI runner — executes all 5 steps in order
-└── frontend/
-    ├── pages/
-    │   ├── index.js                   # Homepage — stats, hot deals, nearby stores
-    │   ├── products/
-    │   │   ├── index.js               # Product grid with brand/city/price filters
-    │   │   └── [id].js                # Product detail — prices at every store
-    │   ├── stores/
-    │   │   ├── index.js               # Store listings — filterable by city
-    │   │   └── [id].js                # Store profile — contact, hours, products
-    │   ├── deals.js                   # Active sales & promotions
-    │   └── search.js                  # Keyword search across products & stores
-    ├── components/
-    │   └── Navbar.js
-    ├── styles/
-    │   └── globals.css
-    ├── next.config.js
-    └── package.json
+├── frontend/                  # Next.js application
+│   ├── components/
+│   │   └── Navbar.js
+│   ├── pages/
+│   │   ├── index.js           # Homepage
+│   │   ├── deals.js           # Active deals page
+│   │   ├── search.js          # Keyword search page
+│   │   ├── products/
+│   │   │   ├── index.js       # Product listings with filters
+│   │   │   └── [id].js        # Product detail page
+│   │   └── stores/
+│   │       ├── index.js       # Store listings
+│   │       └── [id].js        # Store detail page
+│   ├── styles/
+│   │   └── globals.css
+│   ├── next.config.js
+│   └── package.json
+│
+└── backend/                   # FastAPI application
+    ├── main.py                # All API endpoints
+    ├── database.py            # DB connection helper
+    ├── scheduler.py           # Auto-refresh pipeline scheduler
+    ├── requirements.txt
+    └── pipeline/              # Data pipeline scripts
+        ├── fetch_stores_agco.py
+        ├── enrich_store_contacts.py
+        ├── scrape_competitor_products.py
+        ├── run_all.py
+        └── db_config.py
 ```
 
 ---
 
 ## Prerequisites
 
-- **PostgreSQL** running locally (port 5432)
-- **Node.js** 18+
-- **Python** 3.11+
+- **Node.js** v18 or higher
+- **Python** 3.10 or higher
+- **PostgreSQL** with the existing `cannabis_db` database
 
 ---
 
-## Setup & Quick Start
+## Backend Setup
 
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/<your-org>/cannabis-platform.git
-cd cannabis-platform
-```
-
-### 2. Database
-
-```bash
-createdb cannabis_db
-```
-
-> The pipeline will create all required tables automatically on first run.
-
-### 3. Backend
+### 1. Navigate to the backend folder
 
 ```bash
 cd backend
+```
+
+### 2. Create a virtual environment and install dependencies
+
+```bash
+python -m venv venv
+source venv/bin/activate        # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
+```
+
+### 3. Set environment variables
+
+Create a `.env` file in the `backend/` folder (or export these variables):
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=cannabis_db
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+PIPELINE_INTERVAL_HOURS=24
+```
+
+### 4. Start the FastAPI server
+
+```bash
 uvicorn main:app --reload --port 8000
 ```
 
-- Swagger UI → [http://localhost:8000/docs](http://localhost:8000/docs)
-- ReDoc → [http://localhost:8000/redoc](http://localhost:8000/redoc)
+The API will be available at: `http://localhost:8000`
 
-### 4. Frontend
+Swagger docs: `http://localhost:8000/docs`
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-App → [http://localhost:3000](http://localhost:3000)
-
-### 5. Environment Variables
-
-Create `frontend/.env.local`:
-
-```
-API_BASE=http://localhost:8000
-```
-
-For production, update `API_BASE` to your hosted backend URL.
+ReDoc docs: `http://localhost:8000/redoc`
 
 ---
 
-## Data Pipeline
+## Frontend Setup
 
-The backend includes an automated 5-step data pipeline that populates and refreshes `cannabis_db`.
-
-### Pipeline Steps
-
-| Step | Script                          | What it does                                      |
-|------|---------------------------------|---------------------------------------------------|
-| 1    | `fetch_stores_agco.py`          | Fetches all licensed cannabis stores from AGCO    |
-| 2    | `enrich_store_contacts.py`      | Adds phone numbers, hours, and contact details    |
-| 3    | `scrape_competitor_products.py` | Scrapes product listings and pricing              |
-| 4    | `compare_market_prices.py`      | Compares prices against HiBuddy and OCS           |
-| 5    | `reddit_sentiment_analytics.py` | Pulls Reddit sentiment data and builds analytics  |
-
-### Database Tables Populated
-
-| Table                        | Populated By              |
-|------------------------------|---------------------------|
-| `stores_master`              | Steps 1 & 2               |
-| `products_pricing_snapshot`  | Step 3                    |
-| `bbfyb_stores`               | Step 3                    |
-| `hibuddy_raw`                | Step 4                    |
-| `ocs_raw`                    | Step 4                    |
-| `market_comparison`          | Step 4                    |
-| `reddit_sentiment_raw`       | Step 5                    |
-| `business_analytics_summary` | Step 5                    |
-
-### Running the Pipeline
-
-**Option A — Manual CLI run:**
+### 1. Navigate to the frontend folder
 
 ```bash
-cd backend/pipeline
-python run_all.py
+cd frontend
 ```
 
-This runs all 5 steps in sequence and prints a row-count summary for every table when complete.
-
-**Option B — Auto-scheduler (runs with the server):**
-
-The pipeline auto-runs every **24 hours** when the FastAPI server is up. To change the interval:
+### 2. Install dependencies
 
 ```bash
-PIPELINE_INTERVAL_HOURS=12 uvicorn main:app --port 8000
+npm install
 ```
 
-**Option C — Trigger via API:**
+### 3. Set environment variables
+
+Create a `.env.local` file in the `frontend/` folder:
+
+```env
+API_BASE=http://localhost:8000
+```
+
+### 4. Run the development server
 
 ```bash
-POST http://localhost:8000/api/pipeline/run
+npm run dev
 ```
 
-### Pipeline API Endpoints
-
-| Method | Endpoint                  | Description                             |
-|--------|---------------------------|-----------------------------------------|
-| GET    | `/api/pipeline/status`    | Current state + last run timestamp      |
-| POST   | `/api/pipeline/run`       | Trigger a full pipeline run in background |
-| GET    | `/api/pipeline/history`   | Last N runs (`?limit=10`)               |
+The frontend will be available at: `http://localhost:3000`
 
 ---
 
 ## API Endpoints
 
-| Method | Endpoint                  | Query Params                            | Description                                  |
-|--------|---------------------------|-----------------------------------------|----------------------------------------------|
-| GET    | `/api/stores`             | `city`, `limit`, `offset`               | All stores                                   |
-| GET    | `/api/stores/{id}`        | —                                       | Store detail + full product list             |
-| GET    | `/api/products`           | `brand`, `city`, `min_price`, `max_price` | All products with pricing                 |
-| GET    | `/api/products/{id}`      | —                                       | Product detail + all stores carrying it      |
-| GET    | `/api/deals`              | `city`, `limit`, `offset`               | Products currently on sale or promotion      |
-| GET    | `/api/search`             | `q` (required)                          | Full-text search across products & stores    |
-| GET    | `/api/stats`              | —                                       | Homepage dashboard numbers                   |
+| Method | Endpoint                  | Description                                      |
+|--------|---------------------------|--------------------------------------------------|
+| GET    | `/api/stores`             | List all stores (name, address, phone, hours)    |
+| GET    | `/api/stores/{store_id}`  | Single store + all products it carries           |
+| GET    | `/api/products`           | List all products with prices (filterable)       |
+| GET    | `/api/products/{id}`      | Single product + all stores carrying it          |
+| GET    | `/api/deals`              | All products currently on sale or promotion      |
+| GET    | `/api/search?q=keyword`   | Keyword search across products and stores        |
+| GET    | `/api/stats`              | Summary counts (stores, products, brands, deals) |
+| GET    | `/api/pipeline/status`    | Current data pipeline status                     |
+| POST   | `/api/pipeline/run`       | Trigger a manual pipeline refresh                |
+| GET    | `/api/pipeline/history`   | Past pipeline run logs                           |
 
-Full interactive docs available at `/docs` (Swagger UI) once the backend is running.
+### Filter Parameters — `/api/products`
 
----
-
-## Frontend Pages
-
-| Route            | Description                                            |
-|------------------|--------------------------------------------------------|
-| `/`              | Homepage — stats, hot deals, nearby stores, search     |
-| `/products`      | Browsable product grid with brand / city / price filters |
-| `/products/[id]` | Product detail — price comparison across all stores    |
-| `/stores`        | Store list — filterable by city                        |
-| `/stores/[id]`   | Store profile — contact info, hours, product list      |
-| `/deals`         | All active sales, sorted by city                       |
-| `/search`        | Keyword search results for products and stores         |
+| Parameter   | Type   | Description                      |
+|-------------|--------|----------------------------------|
+| `brand`     | string | Filter by brand name             |
+| `city`      | string | Filter by store city             |
+| `min_price` | float  | Minimum regular price            |
+| `max_price` | float  | Maximum regular price            |
+| `limit`     | int    | Max results (default 100)        |
+| `offset`    | int    | Pagination offset (default 0)    |
 
 ---
 
-## Team Access
+## Pages
 
-1. Create a GitHub repository and push all code.
-2. Organize with `/frontend` and `/backend` at the root.
-3. Add team members as collaborators and set branch protection on `main`.
+| Page              | Route              | Description                                      |
+|-------------------|--------------------|--------------------------------------------------|
+| Homepage          | `/`                | Featured deals, nearby stores, stats, search bar |
+| Product Listings  | `/products`        | Browsable grid — filter by category, brand, city, price |
+| Product Detail    | `/products/[id]`   | Product info, prices, and all stores carrying it |
+| Store Listings    | `/stores`          | All stores with name, address, phone, hours      |
+| Store Detail      | `/stores/[id]`     | Store profile + full product list with prices    |
+| Deals             | `/deals`           | Products currently on sale or promotion          |
+| Search            | `/search?q=...`    | Keyword search results (products + stores)       |
 
 ---
 
-*Confidential — MontKailash Cannabis · Internal Project*
+## Data Pipeline
+
+The backend includes an automated data pipeline that refreshes store and product data:
+
+- **Auto-runs** every 24 hours (configurable via `PIPELINE_INTERVAL_HOURS`)
+- **Manual trigger**: `POST /api/pipeline/run`
+- **Check status**: `GET /api/pipeline/status`
+- **View history**: `GET /api/pipeline/history`
+
+Pipeline steps:
+1. Fetch stores from AGCO registry
+2. Enrich store contacts
+3. Scrape competitor product prices
+4. Compare market prices
+5. Reddit sentiment analytics
+6. Score product insights
+
+---
+
+## Team Members
+
+- Add team member names and GitHub usernames here
+
+---
+
+## Notes
+
+- No authentication is required — the platform is fully public
+- All prices and store data are sourced from the existing `cannabis_db` database
+- The platform covers Burlington, ON and stores within a 35 km radius
+
