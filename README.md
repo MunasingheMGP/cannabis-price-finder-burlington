@@ -123,7 +123,7 @@ cd pipeline
 python run_all.py
 ```
 
-This runs all 3 steps in sequence and populates `cannabis_db` with stores and product data. Expected runtime: 10–30 minutes depending on network speed.
+This runs all 3 steps in sequence and populates `cannabis_db` with stores and product data. 
 
 ### 5. Start the FastAPI server
 
