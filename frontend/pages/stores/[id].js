@@ -105,7 +105,7 @@ export default function StoreDetail({ store }) {
                 <span className="info-val">{store.owner_details}</span>
               </div>
             )}
-            {store.website && (
+            {/* {store.website && (
               <div className="info-row">
                 <span className="info-key">Website</span>
                 <span className="info-val">
@@ -115,7 +115,7 @@ export default function StoreDetail({ store }) {
                   </a>
                 </span>
               </div>
-            )}
+            )} */}
           </div>
 
           {store.hours_of_operation && store.hours_of_operation !== 'Not listed' && store.hours_of_operation !== 'Pending' && (

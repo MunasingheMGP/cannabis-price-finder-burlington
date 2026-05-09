@@ -5,6 +5,18 @@ import Navbar from '../components/Navbar';
 
 const API = process.env.API_BASE || 'http://localhost:8000';
 
+// Cannabis product categories with keyword mappings
+const CATEGORIES = [
+  { label: 'Flower',       icon: '🌿', slug: 'flower'      },
+  { label: 'Pre-Rolls',    icon: '🚬', slug: 'pre-roll'    },
+  { label: 'Vapes',        icon: '💨', slug: 'vape'        },
+  { label: 'Edibles',      icon: '🍬', slug: 'edible'      },
+  { label: 'Concentrates', icon: '🔬', slug: 'concentrate' },
+  { label: 'Tinctures',    icon: '💧', slug: 'tincture'    },
+  { label: 'Topicals',     icon: '🧴', slug: 'topical'     },
+  { label: 'Capsules',     icon: '💊', slug: 'capsule'     },
+];
+
 export async function getServerSideProps() {
   try {
     const [statsRes, dealsRes, storesRes] = await Promise.all([
@@ -68,6 +80,27 @@ export default function Home({ stats, deals, stores }) {
           </div>
         ))}
       </div>
+
+      {/*  CATEGORY NAVIGATION  */}
+      <div className="container" style={{ marginBottom: 56 }}>
+        <div className="section-header">
+          <h2 className="section-title">Shop by Category</h2>
+          <Link href="/products" className="section-link">View all products →</Link>
+        </div>
+        <div className="category-grid">
+          {CATEGORIES.map((cat) => (
+            <Link
+              key={cat.slug}
+              href={`/products?category=${encodeURIComponent(cat.slug)}`}
+              className="category-card"
+            >
+              <div className="category-icon">{cat.icon}</div>
+              <div className="category-label">{cat.label}</div>
+            </Link>
+          ))}
+        </div>
+      </div>
+      
 
       {/* FEATURED DEALS */}
       <div className="container" style={{ marginBottom: 56 }}>
