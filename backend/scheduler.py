@@ -1,9 +1,9 @@
 """
 Pipeline scheduler for the MontKailash Cannabis Platform.
 
-- Runs the full data pipeline automatically (default: every 168 hours).
-- Tracks per-run and per-step status in `pipeline_run_log` table.
-- Exposes run status via the FastAPI app (see main.py).
+Runs the full data pipeline automatically (default: every 168 hours).
+Tracks per-run and per-step status in pipeline_run_log table.
+Exposes run status via the FastAPI app (see main.py).
 """
 
 import sys
@@ -16,19 +16,19 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy import text
 
-# ── Make pipeline/ importable regardless of cwd ───────────────────────────────
+#  Make pipeline/ importable regardless of cwd 
 BACKEND_DIR = Path(__file__).parent
 PIPELINE_DIR = BACKEND_DIR / "pipeline"
 sys.path.insert(0, str(PIPELINE_DIR))
 
-# ── Pipeline steps in execution order ─────────────────────────────────────────
+#  Pipeline steps in execution order 
 PIPELINE_STEPS = [
     ("fetch_stores",    "fetch_stores_agco",         "main"),
     ("enrich_contacts", "enrich_store_contacts",      "main"),
     ("scrape_products", "scrape_competitor_products", "main"),
 ]
 
-# ── Shared mutable state (read by API endpoints) ──────────────────────────────
+#  Shared mutable state (read by API endpoints) 
 pipeline_state = {
     "status":      "idle",       # idle | running | success | failed
     "started_at":  None,
@@ -40,7 +40,7 @@ pipeline_state = {
 _scheduler: BackgroundScheduler | None = None
 
 
-# ── DB helpers ────────────────────────────────────────────────────────────────
+#  DB helpers 
 
 def _ensure_log_table(engine):
     """Create pipeline_run_log if it doesn't exist."""
@@ -77,7 +77,7 @@ def _save_run(engine, run_started_at, status, steps, error=None):
     return finished
 
 
-# ── Core runner ───────────────────────────────────────────────────────────────
+#  Core runner 
 
 def run_pipeline(engine=None):
     """
@@ -145,7 +145,7 @@ def run_pipeline(engine=None):
     return pipeline_state.copy()
 
 
-# ── Scheduler lifecycle ───────────────────────────────────────────────────────
+#  Scheduler lifecycle 
 
 def start_scheduler(engine, interval_hours: int = 168):
     """

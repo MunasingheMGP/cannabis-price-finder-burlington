@@ -13,7 +13,7 @@ from database import get_connection
 from typing import Optional
 import re
 
-# ── Make pipeline/ importable ─────────────────────────────────────────────────
+# Make pipeline/ importable 
 PIPELINE_DIR = Path(__file__).parent / "pipeline"
 sys.path.insert(0, str(PIPELINE_DIR))
 
@@ -22,11 +22,27 @@ from scheduler import (
     run_pipeline, pipeline_state, get_last_run_from_db,
 )
 
-# ── Pipeline schedule: hours between automatic runs (default 168) ──────────────
+# Pipeline schedule: hours between automatic runs (default 168) 
 PIPELINE_INTERVAL_HOURS = int(os.getenv("PIPELINE_INTERVAL_HOURS", "168"))
 
 
-# ── Lifespan: start scheduler on boot, stop on shutdown ──────────────────────
+# Category keyword mapping 
+# Maps category slug → list of SQL ILIKE keywords matched against product_name
+CATEGORY_KEYWORDS: dict[str, list[str]] = {
+    "flower":      ["flower", "bud", "indica", "sativa", "hybrid", "cannabis flower"],
+    "pre-roll":    ["pre-roll", "preroll", "pre roll", "joint", "cone", "blunt"],
+    "vape":        ["vape", "vaporizer", "cartridge", "cart", "pen", "pod", "510"],
+    "edible":      ["edible", "gummy", "gummies", "chocolate", "cookie", "brownie",
+                    "beverage", "drink", "candy", "lozenge", "mint"],
+    "concentrate": ["concentrate", "shatter", "wax", "rosin", "resin", "live resin",
+                    "hash", "kief", "distillate", "extract", "dab"],
+    "tincture":    ["tincture", "drops", "sublingual", "oil"],
+    "topical":     ["topical", "cream", "lotion", "balm", "salve", "patch", "gel"],
+    "capsule":     ["capsule", "capsules", "pill", "softgel", "tablet"],
+}
+
+
+#  Lifespan: start scheduler on boot, stop on shutdown 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from db_config import get_engine
@@ -53,7 +69,7 @@ app.add_middleware(
 )
 
 
-# ── HELPERS ────────────────────────────────────────────────────────────────────
+#  HELPERS 
 
 def slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", str(name).lower()).strip("-")
@@ -70,14 +86,28 @@ def rows_to_list(cursor) -> list[dict]:
     return [dict(zip(cols, row)) for row in cursor.fetchall()]
 
 
-# ── ROOT ───────────────────────────────────────────────────────────────────────
+def build_category_sql(category: str, col: str = "p.product_name") -> tuple[str, list]:
+    """
+    Returns (sql_fragment, params) for a category filter.
+    Matches the category slug against known keywords using ILIKE.
+    Returns empty string + [] if category is unknown or blank.
+    """
+    keywords = CATEGORY_KEYWORDS.get(category.lower().strip(), [])
+    if not keywords:
+        return "", []
+    conditions = " OR ".join([f"LOWER({col}) LIKE LOWER(%s)" for _ in keywords])
+    params = [f"%{kw}%" for kw in keywords]
+    return f"({conditions})", params
+
+
+#  ROOT 
 
 @app.get("/", tags=["Health"])
 def root():
     return {"status": "ok", "message": "Cannabis Platform API is running"}
 
 
-# ── STORES ─────────────────────────────────────────────────────────────────────
+#  STORES 
 
 @app.get("/api/stores", tags=["Stores"], summary="List all stores")
 def list_stores(
@@ -120,7 +150,6 @@ def store_detail(store_id: str):
     with get_connection() as conn:
         cur = conn.cursor()
 
-        # fetch store
         cur.execute("""
             SELECT store_name, address, city, postal_code,
                    phone_number, hours_of_operation,
@@ -133,7 +162,6 @@ def store_detail(store_id: str):
         if not store:
             raise HTTPException(status_code=404, detail="Store not found")
 
-        # fetch products for this store
         cur.execute("""
             SELECT product_name, brand, size_format,
                    regular_price, sale_price, promotion_duration
@@ -148,12 +176,16 @@ def store_detail(store_id: str):
     return store
 
 
-# ── PRODUCTS ───────────────────────────────────────────────────────────────────
+#  PRODUCTS 
 
 @app.get("/api/products", tags=["Products"], summary="List all products")
 def list_products(
-    brand: Optional[str]    = Query(None, description="Filter by brand"),
-    city: Optional[str]     = Query(None, description="Filter by store city"),
+    brand: Optional[str]     = Query(None, description="Filter by brand"),
+    city: Optional[str]      = Query(None, description="Filter by store city"),
+    category: Optional[str]  = Query(None, description=(
+        "Filter by product category. Accepted values: "
+        "flower, pre-roll, vape, edible, concentrate, tincture, topical, capsule"
+    )),
     min_price: Optional[float] = Query(None, description="Minimum regular price"),
     max_price: Optional[float] = Query(None, description="Maximum regular price"),
     limit: int  = Query(100, ge=1, le=1000),
@@ -161,12 +193,21 @@ def list_products(
 ):
     """
     Returns all products with regular price, sale price, promotion duration, and store info.
-    Supports filtering by brand, city, and price range.
+    Supports filtering by category, brand, city, and price range.
+
+    **Category values:** flower · pre-roll · vape · edible · concentrate · tincture · topical · capsule
     """
     with get_connection() as conn:
         cur = conn.cursor()
         where_clauses = []
         params: list = []
+
+        #  category filter (keyword-based ILIKE match on product_name) 
+        if category:
+            cat_sql, cat_params = build_category_sql(category)
+            if cat_sql:
+                where_clauses.append(cat_sql)
+                params.extend(cat_params)
 
         if brand:
             where_clauses.append("LOWER(brand) LIKE LOWER(%s)")
@@ -233,31 +274,31 @@ def product_detail(product_id: str):
     first = matches[0]
     stores_carrying = [
         {
-            "store_id":         slug(str(r["store_name"]) + "-" + str(r.get("postal_code", ""))),
-            "store_name":       r["store_name"],
-            "store_city":       r["store_city"],
-            "regular_price":    r["regular_price"],
-            "sale_price":       r["sale_price"],
+            "store_id":           slug(str(r["store_name"]) + "-" + str(r.get("postal_code", ""))),
+            "store_name":         r["store_name"],
+            "store_city":         r["store_city"],
+            "regular_price":      r["regular_price"],
+            "sale_price":         r["sale_price"],
             "promotion_duration": r["promotion_duration"],
         }
         for r in matches
     ]
 
     return {
-        "id":               product_id,
-        "product_name":     first["product_name"],
-        "brand":            first["brand"],
-        "size_format":      first["size_format"],
-        "stores":           stores_carrying,
-        "store_count":      len(stores_carrying),
-        "lowest_price":     min(
+        "id":           product_id,
+        "product_name": first["product_name"],
+        "brand":        first["brand"],
+        "size_format":  first["size_format"],
+        "stores":       stores_carrying,
+        "store_count":  len(stores_carrying),
+        "lowest_price": min(
             (r["regular_price"] for r in matches if r["regular_price"]),
             default=None
         ),
     }
 
 
-# ── DEALS ──────────────────────────────────────────────────────────────────────
+#  DEALS 
 
 @app.get("/api/deals", tags=["Deals"], summary="Products currently on sale")
 def list_deals(
@@ -293,7 +334,7 @@ def list_deals(
     return {"total": len(deals), "deals": deals}
 
 
-# ── SEARCH ─────────────────────────────────────────────────────────────────────
+#  SEARCH 
 
 @app.get("/api/search", tags=["Search"], summary="Keyword search across products and stores")
 def search(
@@ -308,7 +349,6 @@ def search(
     with get_connection() as conn:
         cur = conn.cursor()
 
-        # product search
         cur.execute("""
             SELECT DISTINCT product_name, brand, size_format,
                             regular_price, sale_price
@@ -320,7 +360,6 @@ def search(
         """, (term, term, limit))
         products = rows_to_list(cur)
 
-        # store search
         cur.execute("""
             SELECT store_name, address, city, postal_code,
                    phone_number, hours_of_operation, website
@@ -339,15 +378,43 @@ def search(
         s["id"] = store_slug(s)
 
     return {
-        "query":    q,
-        "products": products,
-        "stores":   stores,
+        "query":          q,
+        "products":       products,
+        "stores":         stores,
         "total_products": len(products),
         "total_stores":   len(stores),
     }
 
 
-# ── STATS (bonus) ──────────────────────────────────────────────────────────────
+#  CATEGORIES (new endpoint) 
+
+@app.get("/api/categories", tags=["Categories"], summary="List all available product categories")
+def list_categories():
+    """
+    Returns the fixed list of product categories supported by the platform.
+    Each category includes its slug (used as the ?category= query param), label, and icon.
+    """
+    return {
+        "categories": [
+            {"slug": slug, "label": label, "icon": icon, "keywords": keywords}
+            for (slug, keywords), (label, icon) in zip(
+                CATEGORY_KEYWORDS.items(),
+                [
+                    ("Flower",       "🌿"),
+                    ("Pre-Rolls",    "🚬"),
+                    ("Vapes",        "💨"),
+                    ("Edibles",      "🍬"),
+                    ("Concentrates", "🔬"),
+                    ("Tinctures",    "💧"),
+                    ("Topicals",     "🧴"),
+                    ("Capsules",     "💊"),
+                ]
+            )
+        ]
+    }
+
+
+#  STATS (bonus) 
 
 @app.get("/api/stats", tags=["Stats"], summary="Platform summary stats")
 def stats():
@@ -381,7 +448,7 @@ def stats():
     }
 
 
-# ── PIPELINE ───────────────────────────────────────────────────────────────────
+#  PIPELINE 
 
 @app.get("/api/pipeline/status", tags=["Pipeline"],
          summary="Current pipeline status and last run details")

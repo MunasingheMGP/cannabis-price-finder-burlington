@@ -11,7 +11,7 @@ import requests
 from bs4 import BeautifulSoup
 from db_config import get_engine, write_df
 
-# ── CONFIG ────────────────────────────────────────────────────────────────────
+#  CONFIG 
 BBFYB_CITIES = [
     "Burlington", "Hamilton", "Oakville",
     "Mississauga", "Milton", "Brampton", "Stoney-Creek",
@@ -37,7 +37,7 @@ PROMO_RE = re.compile(
 )
 
 
-# ── HELPERS ───────────────────────────────────────────────────────────────────
+#  HELPERS 
 def get_html(url: str) -> str:
     r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
     r.raise_for_status()
@@ -48,7 +48,7 @@ def clean(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-# ── LIST STORE URLS FOR A CITY ────────────────────────────────────────────────
+#  LIST STORE URLS FOR A CITY 
 def get_store_urls(city: str) -> list[dict]:
     url  = CITY_URL.format(city=city)
     html = get_html(url)
@@ -70,7 +70,7 @@ def get_store_urls(city: str) -> list[dict]:
     return stores
 
 
-# ── SCRAPE PRODUCTS FROM ONE STORE ────────────────────────────────────────────
+#  SCRAPE PRODUCTS FROM ONE STORE 
 def scrape_products(store: dict) -> list[dict]:
     html     = get_html(store["store_url"])
     soup     = BeautifulSoup(html, "lxml")
@@ -131,7 +131,7 @@ def scrape_products(store: dict) -> list[dict]:
     return products
 
 
-# ── MAIN ──────────────────────────────────────────────────────────────────────
+#  MAIN 
 def main():
     engine       = get_engine()
     all_stores   = []
@@ -157,14 +157,14 @@ def main():
                 print(f"    Failed: {e}")
             time.sleep(DELAY)
 
-    # ── Write to PostgreSQL ───────────────────────────────────────────────────
+    #  Write to PostgreSQL 
     products_df = pd.DataFrame(all_products)
     if products_df.empty:
         print("\nNo products scraped — check if BBFYB site structure changed.")
     else:
         raw_count = len(products_df)
 
-        # ── Drop rows where BOTH regular_price and sale_price are missing ─────
+        #  Drop rows where BOTH regular_price and sale_price are missing 
         no_price_mask = (
             products_df["regular_price"].str.strip().eq("") &
             products_df["sale_price"].str.strip().eq("")
@@ -174,7 +174,7 @@ def main():
         if no_price_dropped:
             print(f"\n  Dropped {no_price_dropped} product(s) with no price info.")
 
-        # ── Deduplicate: same store_name + product_name + effective price ──────
+        #  Deduplicate: same store_name + product_name + effective price 
         # Use sale_price when available, else regular_price as the comparison key
         products_df["_price_key"] = products_df["sale_price"].where(
             products_df["sale_price"].str.strip().ne(""),

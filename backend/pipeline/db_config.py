@@ -6,7 +6,7 @@ All scripts import get_engine() from here.
 from sqlalchemy import create_engine, text
 import pandas as pd
 
-# ── CONNECTION ────────────────────────────────────────────────────────────────
+#  CONNECTION 
 DB_USER     = "postgres"
 DB_PASSWORD = "pgadmin"
 DB_HOST     = "localhost"
@@ -24,7 +24,7 @@ def get_engine():
     return create_engine(DATABASE_URL, future=True)
 
 
-# ── HELPERS ───────────────────────────────────────────────────────────────────
+#  HELPERS 
 
 def table_exists(engine, table_name: str) -> bool:
     """Check whether a table exists AND has at least one row (cache guard)."""

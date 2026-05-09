@@ -43,7 +43,7 @@ HOURS_LINE_RE = re.compile(
 )
 
 
-# ── EXTRACT PHONE ─────────────────────────────────────────────────────────────
+#  EXTRACT PHONE 
 def extract_phone(text: str) -> str:
     for m in PHONE_RE.finditer(text):
         phone  = m.group().strip()
@@ -53,7 +53,7 @@ def extract_phone(text: str) -> str:
     return "Not listed"
 
 
-# ── EXTRACT HOURS ─────────────────────────────────────────────────────────────
+#  EXTRACT HOURS 
 def extract_hours(soup: BeautifulSoup, raw_text: str) -> str:
     for tag in soup.find_all(
         ["div", "section", "ul", "p", "table"],
@@ -80,7 +80,7 @@ def extract_hours(soup: BeautifulSoup, raw_text: str) -> str:
     return "Not listed"
 
 
-# ── SCRAPE ONE STORE URL ──────────────────────────────────────────────────────
+#  SCRAPE ONE STORE URL 
 def scrape_store(url: str):
     phone = "Not listed"
     hours = "Not listed"
@@ -126,7 +126,7 @@ def scrape_store(url: str):
     return phone, hours
 
 
-# ── MAIN ──────────────────────────────────────────────────────────────────────
+#  MAIN 
 def main():
     engine = get_engine()
     df     = read_df("stores_master", engine)
@@ -152,7 +152,7 @@ def main():
     df["phone_number"]       = phones
     df["hours_of_operation"] = hours_list
 
-    # ── Write enriched data back to PostgreSQL ────────────────────────────────
+    #  Write enriched data back to PostgreSQL 
     write_df(df, "stores_master", engine, if_exists="replace")
 
     filled_phone = sum(1 for p in phones if p != "Not listed")

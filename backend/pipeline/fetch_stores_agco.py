@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 from db_config import get_engine, write_df
 
-# ── CONFIG ────────────────────────────────────────────────────────────────────
+#  CONFIG 
 AGCO_BASE     = (
     "https://services9.arcgis.com"
     "/8LLh665FxwX7bxLB/arcgis/rest/services"
@@ -17,7 +17,7 @@ RADIUS_KM  = 35
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 
-# ── HAVERSINE ─────────────────────────────────────────────────────────────────
+#  HAVERSINE 
 def haversine(lat1, lon1, lat2, lon2):
     r    = 6371
     dlat = math.radians(lat2 - lat1)
@@ -31,7 +31,7 @@ def haversine(lat1, lon1, lat2, lon2):
     return 2 * r * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-# ── AUTO-DETECT LATEST AGCO SERVICE ──────────────────────────────────────────
+#  AUTO-DETECT LATEST AGCO SERVICE 
 def get_latest_service():
     try:
         r = requests.get(f"{AGCO_BASE}?f=json", headers=HEADERS, timeout=20)
@@ -50,7 +50,7 @@ def get_latest_service():
     return AGCO_FALLBACK
 
 
-# ── FETCH ALL AGCO STORES ─────────────────────────────────────────────────────
+#  FETCH ALL AGCO STORES 
 def fetch_stores(service_name):
     url    = f"{AGCO_BASE}/{service_name}/FeatureServer/0/query"
     params = {
@@ -67,7 +67,7 @@ def fetch_stores(service_name):
     return pd.DataFrame(rows)
 
 
-# ── MAIN ──────────────────────────────────────────────────────────────────────
+#  MAIN 
 def main():
     engine  = get_engine()
     service = get_latest_service()
@@ -106,7 +106,7 @@ def main():
     ]
     final = df[[c for c in keep if c in df.columns]]
 
-    # ── Write to PostgreSQL ───────────────────────────────────────────────────
+    #  Write to PostgreSQL 
     write_df(final, "stores_master", engine, if_exists="replace")
     print(f"Stores within {RADIUS_KM} km: {len(final)}")
 
